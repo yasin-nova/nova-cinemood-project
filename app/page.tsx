@@ -23,7 +23,7 @@ interface Movie {
 }
 
 // AYARLAR
-const API_KEY = '8b9afd2cbb1a925ab68ec670b6c3d871'; // <-- ANAHTARINI BURAYA YAPIŞTIR
+const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY; // <-- ANAHTARINI BURAYA YAPIŞTIR
 const BASE_URL = 'https://api.themoviedb.org/3';
 
 // Geliştirilmiş Mood Listesi

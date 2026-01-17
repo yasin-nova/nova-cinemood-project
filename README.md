@@ -1,39 +1,57 @@
 # 🎬 Nova CineMood
 
-**Nova CineMood**, kullanıcıların o anki ruh haline (mood) göre film önerileri almasını sağlayan yapay zeka destekli bir web uygulamasıdır. Klasik "tür seçme" deneyimi yerine, duygu durumuna odaklanan bir kullanıcı deneyimi (UX) sunar.
+**Nova CineMood**, "Ne izlesem?" derdine son veren, kullanıcıların o anki duygu durumuna (mood) göre nokta atışı film önerileri almasını sağlayan modern bir web uygulamasıdır.
 
-## 🚀 Canlı Demo
-[Buraya Vercel Linki Gelecek]
+🔗 **Canlı Demo:** [https://nova-cinemood-project.vercel.app/](https://nova-cinemood-project.vercel.app/)
 
-## 💡 Özellikler
-* **Duygu Analizi:** Kullanıcının seçtiği ruh haline (Sıkılmış, Hüzünlü, Meraklı vb.) göre arka planda dinamik tür eşleştirmesi yapar.
-* **Akıllı Algoritma:** TMDB API'sini kullanarak popülerlik, oy oranı ve tür filtresine göre en uygun içeriği getirir.
-* **Responsive Tasarım:** Tailwind CSS ile hem mobil hem masaüstü cihazlarda kusursuz görünüm.
-* **Type-Safe:** TypeScript kullanılarak geliştirilmiş, hata oranı minimize edilmiş kod yapısı.
+
+
+## ✨ Öne Çıkan Özellikler
+
+* **🎭 Mood Tabanlı Öneri:** Standart kategori seçimi yerine; "Sıkıldım", "Hüzünlüyüm", "Meraklıyım" gibi duygu durumlarına göre akıllı filtreleme.
+* **🎥 Fragman Entegrasyonu:** Önerilen filmin YouTube fragmanını direkt arayüz üzerinden izleme imkanı.
+* **💾 Kişisel İzleme Listesi:** Beğenilen filmleri tarayıcı hafızasında (LocalStorage) saklayarak kaybetmeme özelliği.
+* **🎨 Modern Arayüz:** Tailwind CSS ile hazırlanmış, Glassmorphism etkili şık ve responsive (mobil uyumlu) tasarım.
+* **🔒 Güvenli Mimari:** API anahtarları `.env` dosyası üzerinden yönetilir, kod içine gömülmez.
 
 ## 🛠️ Kullanılan Teknolojiler
-* **Framework:** Next.js 14 (App Router)
-* **Dil:** TypeScript
-* **Styling:** Tailwind CSS
-* **Veri Kaynağı:** TMDB API
-* **HTTP Client:** Axios
 
-## 📦 Kurulum (Lokal)
+* **Framework:** [Next.js 14](https://nextjs.org/) (App Router)
+* **Dil:** [TypeScript](https://www.typescriptlang.org/)
+* **Stil:** [Tailwind CSS](https://tailwindcss.com/)
+* **Veri Kaynağı:** [TMDB API](https://www.themoviedb.org/)
+* **HTTP İstekleri:** Axios
 
-1. Projeyi klonlayın:
-\`\`\`bash
-git clone https://github.com/kullaniciadi/nova-cinemood.git
-\`\`\`
+## 🚀 Kurulum (Local Setup)
 
-2. Bağımlılıkları yükleyin:
-\`\`\`bash
-npm install
-\`\`\`
+Projeyi kendi bilgisayarınızda çalıştırmak için şu adımları izleyin:
 
-3. API Anahtarını Ekleyin:
-`src/app/page.tsx` dosyası içerisindeki `API_KEY` alanına kendi TMDB anahtarınızı girin.
+1.  **Projeyi Klonlayın:**
+    ```bash
+    git clone [https://github.com/KULLANICI_ADIN/nova-cinemood.git](https://github.com/KULLANICI_ADIN/nova-cinemood.git)
+    cd nova-cinemood
+    ```
 
-4. Çalıştırın:
-\`\`\`bash
-npm run dev
-\`\`\`
+2.  **Paketleri Yükleyin:**
+    ```bash
+    npm install
+    ```
+
+3.  **Çevre Değişkenlerini (Environment Variables) Ayarlayın:**
+    Ana dizinde `.env.local` adında bir dosya oluşturun ve TMDB API anahtarınızı ekleyin:
+    ```env
+    NEXT_PUBLIC_TMDB_API_KEY=senin_api_anahtarin_buraya
+    ```
+
+4.  **Projeyi Başlatın:**
+    ```bash
+    npm run dev
+    ```
+    Tarayıcınızda `http://localhost:3000` adresine gidin.
+
+## 🌐 Dağıtım (Deployment)
+
+Bu proje [Vercel](https://vercel.com) üzerinde barındırılmaktadır. Kendi versiyonunuzu yayınlarken Vercel proje ayarlarında **Environment Variables** kısmına `NEXT_PUBLIC_TMDB_API_KEY` değişkenini eklemeyi unutmayın.
+
+---
+*Geliştirici: [Senin Adın/GitHub Profilin]*
