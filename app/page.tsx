@@ -2,14 +2,22 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
-// 1. TİP TANIMLAMALARI
+// --- 1. TİP TANIMLAMALARI ---
+
 interface Mood {
   id: string;
   label: string;
   emoji: string;
   genreIds: string;
   desc: string;
-  color: string; // Buton rengi için
+  color: string;
+}
+
+interface Cast {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  character: string;
 }
 
 interface Movie {
@@ -19,56 +27,54 @@ interface Movie {
   poster_path: string;
   vote_average: number;
   release_date: string;
-  trailer_key?: string; // Fragman ID'si (Opsiyonel)
-  providers?: {
-    logo_path: string;
-    provider_name: string;
-  }[];
+  trailer_key?: string;
+  providers?: { logo_path: string; provider_name: string }[];
+  cast?: Cast[];
 }
 
-// AYARLAR
-const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY; // <-- ANAHTARINI BURAYA YAPIŞTIR
+// --- 2. AYARLAR ---
+
+const API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY; 
 const BASE_URL = 'https://api.themoviedb.org/3';
 
-// Geliştirilmiş Mood Listesi
 const MOODS: Mood[] = [
-  {
-    id: 'bored',
-    label: '😤 Sıkıldım',
-    emoji: '🔥',
-    genreIds: '28,12',
+  { 
+    id: 'bored', 
+    label: '😤 Sıkıldım', 
+    emoji: '🔥', 
+    genreIds: '28,12', 
     desc: 'Adrenalin ve Aksiyon',
     color: 'from-red-500 to-orange-500'
   },
-  {
-    id: 'sad',
-    label: '😢 Hüzünlüyüm',
-    emoji: '🍫',
-    genreIds: '35,10751',
+  { 
+    id: 'sad', 
+    label: '😢 Hüzünlüyüm', 
+    emoji: '🍫', 
+    genreIds: '35,10751', 
     desc: 'Komedi ve Aile',
     color: 'from-blue-400 to-cyan-300'
   },
-  {
-    id: 'chill',
-    label: '😌 Sakin',
-    emoji: '🌿',
-    genreIds: '99,36,18',
+  { 
+    id: 'chill', 
+    label: '😌 Sakin', 
+    emoji: '🌿', 
+    genreIds: '99,36,18', 
     desc: 'Drama ve Belgesel',
     color: 'from-green-400 to-emerald-600'
   },
-  {
-    id: 'scared',
-    label: '😱 Korkut Beni',
-    emoji: '👻',
-    genreIds: '27,53',
+  { 
+    id: 'scared', 
+    label: '😱 Korkut Beni', 
+    emoji: '👻', 
+    genreIds: '27,53', 
     desc: 'Korku ve Gerilim',
     color: 'from-purple-600 to-indigo-900'
   },
-  {
-    id: 'curious',
-    label: '🤔 Meraklı',
-    emoji: '🚀',
-    genreIds: '878,9648',
+  { 
+    id: 'curious', 
+    label: '🤔 Meraklı', 
+    emoji: '🚀', 
+    genreIds: '878,9648', 
     desc: 'Bilim Kurgu ve Gizem',
     color: 'from-indigo-400 to-purple-500'
   }
@@ -80,7 +86,7 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(false);
   const [savedMovies, setSavedMovies] = useState<Movie[]>([]);
 
-  // Sayfa açıldığında LocalStorage'dan kayıtlı filmleri çek
+  // LocalStorage'dan kayıtlı filmleri çek
   useEffect(() => {
     const saved = localStorage.getItem('myWatchlist');
     if (saved) {
@@ -103,22 +109,23 @@ export default function Home() {
     localStorage.setItem('myWatchlist', JSON.stringify(newSavedList));
   };
 
+  // --- ANA FONKSİYON: FİLM GETİR ---
   const fetchMovie = async (mood: Mood) => {
     setLoading(true);
     setActiveMood(mood);
     setMovie(null);
 
     try {
-      // 1. FİLMİ BUL
+      // 1. FİLM LİSTESİNİ ÇEK (Filtreli)
       const response = await axios.get(`${BASE_URL}/discover/movie`, {
         params: {
           api_key: API_KEY,
           with_genres: mood.genreIds,
           sort_by: 'popularity.desc',
           language: 'tr-TR',
-          'vote_average.gte': 6.0,
-          'vote_count.gte': 100,
-          page: Math.floor(Math.random() * 5) + 1
+          'vote_average.gte': 6.0, // IMDB 6+
+          'vote_count.gte': 100,   // En az 100 oy
+          page: Math.floor(Math.random() * 5) + 1 
         }
       });
 
@@ -126,42 +133,44 @@ export default function Home() {
       if (results.length > 0) {
         const randomMovie = results[Math.floor(Math.random() * results.length)];
 
-        // 2. FRAGMANI ÇEK (Paralel İstek 1)
-        const videoReq = axios.get(`${BASE_URL}/movie/${randomMovie.id}/videos`, {
-          params: { api_key: API_KEY }
-        });
+        // 2. PARALEL İSTEKLER (Fragman + Platform + Oyuncular)
+        const [videoRes, providerRes, creditsRes] = await Promise.all([
+          axios.get(`${BASE_URL}/movie/${randomMovie.id}/videos`, { params: { api_key: API_KEY } }),
+          axios.get(`${BASE_URL}/movie/${randomMovie.id}/watch/providers`, { params: { api_key: API_KEY } }),
+          axios.get(`${BASE_URL}/movie/${randomMovie.id}/credits`, { params: { api_key: API_KEY } })
+        ]);
 
-        // 3. İZLEME PLATFORMLARINI ÇEK (Paralel İstek 2 - YENİ)
-        const providerReq = axios.get(`${BASE_URL}/movie/${randomMovie.id}/watch/providers`, {
-          params: { api_key: API_KEY }
-        });
-
-        // İki isteği aynı anda bekle (Daha hızlı çalışır)
-        const [videoRes, providerRes] = await Promise.all([videoReq, providerReq]);
-
-        // Fragman Mantığı
+        // A. Fragman İşleme
         const trailer = videoRes.data.results.find(
           (vid: any) => vid.site === "YouTube" && (vid.type === "Trailer" || vid.type === "Teaser")
         );
 
-        // Platform Mantığı (Türkiye 'TR' verisine bakıyoruz)
+        // B. Platform İşleme (Türkiye)
         const trProviders = providerRes.data.results.TR;
-        // Flatrate (Abonelik) veya Buy (Satın alma) seçeneklerini birleştir
-        const availableProviders = trProviders
-          ? [...(trProviders.flatrate || []), ...(trProviders.buy || [])].slice(0, 3) // En fazla 3 tane göster
+        const availableProviders = trProviders 
+          ? [...(trProviders.flatrate || []), ...(trProviders.buy || [])].slice(0, 3) 
           : [];
 
-        // State'i Güncelle
+        // C. Oyuncu İşleme (İlk 5)
+        const topCast = creditsRes.data.cast.slice(0, 5).map((actor: any) => ({
+          id: actor.id,
+          name: actor.name,
+          character: actor.character,
+          profile_path: actor.profile_path
+        }));
+
+        // State Güncelleme
         setMovie({
           ...randomMovie,
           trailer_key: trailer ? trailer.key : null,
-          providers: availableProviders // YENİ
+          providers: availableProviders,
+          cast: topCast
         });
 
       } else {
         alert("Bu kriterlere uygun film bulamadım.");
       }
-
+      
     } catch (error) {
       console.error("Hata:", error);
     }
@@ -172,7 +181,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#0f172a] text-white flex flex-col items-center p-6 font-sans selection:bg-purple-500 selection:text-white">
-
+      
       {/* HEADER */}
       <div className="text-center mb-10 mt-6 z-10">
         <h1 className="text-5xl md:text-7xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 drop-shadow-lg">
@@ -183,7 +192,7 @@ export default function Home() {
         </p>
       </div>
 
-      {/* MOOD SEÇİCİ */}
+      {/* MOOD BUTONLARI */}
       <div className="flex flex-wrap justify-center gap-4 w-full max-w-4xl mb-12">
         {MOODS.map((mood) => (
           <button
@@ -191,8 +200,8 @@ export default function Home() {
             onClick={() => fetchMovie(mood)}
             className={`
               relative group overflow-hidden px-6 py-4 rounded-2xl border transition-all duration-300
-              ${activeMood?.id === mood.id
-                ? `bg-gradient-to-br ${mood.color} border-transparent shadow-lg scale-105 ring-2 ring-white/20`
+              ${activeMood?.id === mood.id 
+                ? `bg-gradient-to-br ${mood.color} border-transparent shadow-lg scale-105 ring-2 ring-white/20` 
                 : 'bg-slate-800/50 border-slate-700 hover:border-slate-500 hover:bg-slate-800'
               }
             `}
@@ -205,26 +214,26 @@ export default function Home() {
         ))}
       </div>
 
-      {/* ANA İÇERİK ALANI */}
+      {/* İÇERİK ALANI */}
       <div className="w-full max-w-5xl flex flex-col lg:flex-row gap-8 items-start">
-
+        
         {/* SOL: FİLM KARTI */}
         <div className="flex-1 w-full">
           {loading ? (
-            <div className="h-[500px] w-full bg-slate-800/30 rounded-3xl border border-slate-700 animate-pulse flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-purple-400 font-bold animate-pulse">Film Mısırları Patlatılıyor...</span>
-              </div>
-            </div>
+             <div className="h-[500px] w-full bg-slate-800/30 rounded-3xl border border-slate-700 animate-pulse flex items-center justify-center">
+               <div className="flex flex-col items-center gap-4">
+                 <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                 <span className="text-purple-400 font-bold animate-pulse">Film Mısırları Patlatılıyor...</span>
+               </div>
+             </div>
           ) : movie ? (
             <div className="bg-slate-800/40 backdrop-blur-xl rounded-3xl overflow-hidden shadow-2xl border border-slate-700/50 flex flex-col md:flex-row relative group">
-
+              
               {/* Poster */}
-              <div className="md:w-2/5 relative h-[500px] md:h-auto overflow-hidden">
+              <div className="md:w-2/5 relative h-[600px] md:h-auto overflow-hidden">
                 {movie.poster_path ? (
-                  <img
-                    src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                  <img 
+                    src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} 
                     alt={movie.title}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
@@ -235,66 +244,91 @@ export default function Home() {
               </div>
 
               {/* Detaylar */}
-              <div className="p-8 md:w-3/5 flex flex-col justify-center">
+              <div className="p-6 md:p-8 md:w-3/5 flex flex-col justify-center">
                 <div className="mb-4">
                   <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 mb-2">
                     {movie.release_date?.split('-')[0]}
                   </span>
-                  <h2 className="text-4xl font-bold leading-tight">{movie.title}</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold leading-tight">{movie.title}</h2>
                 </div>
-
+                
+                {/* Puanlama */}
                 <div className="flex items-center gap-4 mb-6">
                   <div className="flex items-center text-yellow-400 font-bold text-xl">
-                    ⭐ {movie.vote_average >= 7.5 && (
-                      <span className="bg-orange-500/20 text-orange-400 text-xs font-bold px-2 py-1 rounded border border-orange-500/30 animate-pulse">
-                        🔥 Kesin İzle
-                      </span>
-                    )}
+                    ⭐ {movie.vote_average?.toFixed(1)}
                   </div>
+                  {movie.vote_average >= 7.5 && (
+                    <span className="bg-orange-500/20 text-orange-400 text-xs font-bold px-2 py-1 rounded border border-orange-500/30 animate-pulse">
+                      🔥 Kesin İzle
+                    </span>
+                  )}
                   <div className="h-1 w-1 rounded-full bg-slate-500"></div>
                   <div className="text-slate-400 text-sm">TMDB Puanı</div>
                 </div>
 
-                <p className="text-slate-300 leading-relaxed text-lg mb-8 line-clamp-6">
+                <p className="text-slate-300 leading-relaxed text-sm md:text-base mb-6 line-clamp-4 hover:line-clamp-none transition-all cursor-pointer">
                   {movie.overview || "Özet bulunamadı."}
                 </p>
-                {/* PLATFORMLAR ALANI */}
-                {movie.providers && movie.providers.length > 0 && (
+
+                {/* --- YENİ: OYUNCULAR --- */}
+                {movie.cast && movie.cast.length > 0 && (
                   <div className="mb-6">
-                    <p className="text-sm text-slate-400 mb-2">Burada İzleyebilirsin:</p>
-                    <div className="flex gap-3">
-                      {movie.providers.map((prov, index) => (
-                        <div key={index} className="group relative">
-                          <img
-                            src={`https://image.tmdb.org/t/p/original${prov.logo_path}`}
-                            alt={prov.provider_name}
-                            title={prov.provider_name}
-                            className="w-10 h-10 rounded-lg shadow-md border border-slate-600 transition-transform group-hover:scale-110"
-                          />
+                    <p className="text-xs text-slate-400 mb-2 font-semibold uppercase tracking-wider">Başrol Oyuncuları</p>
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                      {movie.cast.map((actor) => (
+                        <div key={actor.id} className="flex flex-col items-center min-w-[64px]">
+                          <div className="w-12 h-12 rounded-full overflow-hidden border border-slate-600 mb-1 bg-slate-700">
+                            {actor.profile_path ? (
+                              <img src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`} alt={actor.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold">{actor.name.charAt(0)}</div>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-center text-slate-300 w-16 truncate">{actor.name}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
-                {/* Aksiyon Butonları */}
-                <div className="flex flex-wrap gap-4 mt-auto">
+
+                {/* --- YENİ: PLATFORMLAR --- */}
+                {movie.providers && movie.providers.length > 0 && (
+                  <div className="mb-6">
+                    <p className="text-xs text-slate-400 mb-2 font-semibold uppercase tracking-wider">Burada İzleyebilirsin:</p>
+                    <div className="flex gap-3">
+                      {movie.providers.map((prov, index) => (
+                        <img 
+                          key={index}
+                          src={`https://image.tmdb.org/t/p/original${prov.logo_path}`} 
+                          alt={prov.provider_name}
+                          title={prov.provider_name}
+                          className="w-8 h-8 rounded-md shadow-md hover:scale-110 transition-transform"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Butonlar */}
+                <div className="flex flex-wrap gap-3 mt-auto pt-4 border-t border-slate-700/50">
                   {movie.trailer_key && (
-                    <a
-                      href={`https://www.youtube.com/watch?v=${movie.trailer_key}`}
-                      target="_blank"
+                    <a 
+                      href={`https://www.youtube.com/watch?v=${movie.trailer_key}`} 
+                      target="_blank" 
                       rel="noopener noreferrer"
-                      className="px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold flex items-center gap-2 transition-all shadow-lg hover:shadow-red-600/30"
+                      className="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold flex items-center gap-2 transition-all shadow-lg hover:shadow-red-600/30 text-sm md:text-base"
                     >
-                      ▶ Fragmanı İzle
+                      ▶ Fragman
                     </a>
                   )}
-
-                  <button
+                  
+                  <button 
                     onClick={() => toggleSaveMovie(movie)}
-                    className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all border ${isSaved
-                      ? 'bg-green-600 border-green-500 text-white hover:bg-green-700'
+                    className={`px-5 py-3 rounded-xl font-bold flex items-center gap-2 transition-all border text-sm md:text-base ${
+                      isSaved 
+                      ? 'bg-green-600 border-green-500 text-white hover:bg-green-700' 
                       : 'bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600'
-                      }`}
+                    }`}
                   >
                     {isSaved ? '✓ Listemde' : '+ Listeme Ekle'}
                   </button>
@@ -305,33 +339,33 @@ export default function Home() {
             <div className="h-[400px] flex flex-col items-center justify-center text-center p-8 bg-slate-800/30 rounded-3xl border border-slate-700/50 border-dashed">
               <span className="text-6xl mb-4">👆</span>
               <h3 className="text-2xl font-bold text-slate-300">Bir Mod Seç</h3>
-              <p className="text-slate-500 max-w-xs mt-2">Yukarıdaki butonlardan birine tıkla, yapay zeka sana uygun filmi bulsun.</p>
+              <p className="text-slate-500 max-w-xs mt-2">Yukarıdaki butonlardan birine tıkla, senin için en iyi filmi bulalım.</p>
             </div>
           )}
         </div>
 
-        {/* SAĞ: İZLEME LİSTESİ (SIDEBAR) */}
+        {/* SAĞ: İZLEME LİSTESİ */}
         <div className="w-full lg:w-80 flex flex-col gap-4">
           <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700/50">
             <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
               📂 Listem <span className="text-sm bg-slate-700 px-2 py-0.5 rounded-full text-slate-300">{savedMovies.length}</span>
             </h3>
-
+            
             {savedMovies.length === 0 ? (
               <p className="text-slate-500 text-sm">Henüz hiç film kaydetmedin.</p>
             ) : (
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                 {savedMovies.map((m) => (
                   <div key={m.id} className="group flex gap-3 items-start bg-slate-900/50 p-3 rounded-xl hover:bg-slate-800 transition-colors">
-                    <img
-                      src={`https://image.tmdb.org/t/p/w200${m.poster_path}`}
+                    <img 
+                      src={`https://image.tmdb.org/t/p/w200${m.poster_path}`} 
                       alt={m.title}
                       className="w-12 h-16 object-cover rounded-lg"
                     />
                     <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-sm truncate text-slate-200">{m.title}</h4>
                       <p className="text-xs text-yellow-500 mt-1">⭐ {m.vote_average.toFixed(1)}</p>
-                      <button
+                      <button 
                         onClick={() => toggleSaveMovie(m)}
                         className="text-xs text-red-400 mt-2 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
